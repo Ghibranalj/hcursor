@@ -4,13 +4,13 @@
 #include <X11/Xlib.h>
 #include <X11/extensions/Xfixes.h>
 #include <signal.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <unistd.h>
-#include <stdbool.h>
 
 #include "hcursor.h"
 
@@ -29,23 +29,30 @@ char *usage = "Usage: hcursor [options]\n"
 // when --show or -s sends a kill signal to the socket
 // and the process will die and the cursor will be shown
 int main(int argc, char **argv) {
-  int val = parse_args(argc, argv);
+  arg_t val = parse_args(argc, argv);
+
   switch (val) {
-  case 0:
-    return 0;
-  case 1:
+
+  case HIDE:
     return hide_cursor();
-  case 2:
+  case SHOW:
     return show_cursor();
-  case 3:
+  case STATUS:
     print_status();
     break;
+  case VER:
+    printf("hcursor version %s\n", VERSION);
+    break;
+  case USAGE:
+  case ERROR:
   default:
-    return 1;
+    puts(usage);
+    return val;
   }
+
 }
 
-void print_status(){
+void print_status() {
   if (is_cursor_hidden()) {
     printf("hidden\n");
     return;
@@ -53,14 +60,9 @@ void print_status(){
   printf("shown\n");
 }
 
-bool is_cursor_hidden(){
- return access(socket_file, F_OK) != -1;
-}
+bool is_cursor_hidden() { return access(socket_file, F_OK) != -1; }
 
 int hide_cursor() {
-  // check if socket exists if it does return 1
-  //
-  //
   if (access(socket_file, F_OK) != -1) {
     fprintf(stderr, "hcursor: cursor is already hidden\n");
     return 1;
@@ -159,41 +161,43 @@ int show_cursor() {
 // return 2 to show cursor
 // return 3 to show status
 // other return values are errors
-int parse_args(int argc, char **argv) {
+arg_t parse_args(int argc, char **argv) {
   if (argc != 2) {
-    printf("%s", usage);
-    return 255;
+    /* printf("%s", usage); */
+    return ERROR;
   }
   if (strcmp(argv[1], "-h") == 0 || strcmp(argv[1], "--help") == 0) {
-    printf("%s", usage);
-    return 0;
+    /* printf("%s", usage); */
+    return USAGE;
   }
 
   if (strcmp(argv[1], "-v") == 0 || strcmp(argv[1], "--version") == 0) {
     // VERSION defined in Makefile
-    printf("hcursor version %s\n", VERSION);
-    return 0;
+    /* printf("hcursor version %s\n", VERSION); */
+    return VER;
   }
 
   if (strcmp(argv[1], "-x") == 0 || strcmp(argv[1], "--hide") == 0) {
-    return 1;
-  }
-  if (strcmp(argv[1], "-y") == 0 || strcmp(argv[1], "--show") == 0) {
-    return 2;
-  }
-  if (strcmp(argv[1], "-s") == 0 || strcmp(argv[1], "--status") == 0) {
-    return 3;
-  }
-  // -t or --toggle
-  if (strcmp(argv[1], "-t") == 0 || strcmp(argv[1], "--toggle") == 0) {
-    if (is_cursor_hidden()) {
-      return 2;
-    }
-    return 1;
+    return HIDE;
   }
 
-  printf("%s", usage);
-  return 255;
+  if (strcmp(argv[1], "-y") == 0 || strcmp(argv[1], "--show") == 0) {
+    return SHOW;
+  }
+
+  if (strcmp(argv[1], "-s") == 0 || strcmp(argv[1], "--status") == 0) {
+    return STATUS;
+  }
+
+  if (strcmp(argv[1], "-t") == 0 || strcmp(argv[1], "--toggle") == 0) {
+    if (is_cursor_hidden()) {
+      return SHOW;
+    }
+    return HIDE;
+  }
+
+  /* printf("%s", usage); */
+  return ERROR;
 }
 
 int open_socket(char *path, sockaddr_t *addr) {

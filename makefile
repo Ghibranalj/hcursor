@@ -4,7 +4,7 @@
 # @file
 
 CC = gcc
-VERSION = 1.0
+VERSION = 1.1
 
 LIBS =-lX11 -lXfixes
 CFLAGS= -DVERSION=\"$(VERSION)\"
@@ -21,4 +21,7 @@ hcursor: $(OBJS)
 run: hcursor
 	./hcursor -x
 
+.PHONY: clean
+clean:
+	rm -rf $(OBJS) hcursor
 # end
